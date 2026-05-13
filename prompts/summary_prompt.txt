@@ -1,0 +1,13 @@
+You are a Lead System Analyst. Your task is to analyze the provided source code and extract the underlying BUSINESS LOGIC.
+   For EACH file listed below, create a "Passport" in JSON format. Return a single JSON ARRAY containing these objects.
+   Each object in the array MUST have the following structure:
+    1. "path": (string) The file path provided in the START_FILE header.
+    2. "domain": (string) Functional area (e.g., Shopping Cart, Authentication, UI Components, Payment Gateway).
+    3. "summary": (string) A concise 1-2 sentence description of WHAT the file does.
+    4. "business_rules": (array of strings) Specific rules, conditional logic (if/else), formulas, or constraints found in the code.
+    5. "interactions": (array of strings) API endpoints, database table names, or external services/dependencies mentioned.
+    
+    RESPONSE FORMAT: Return ONLY a valid JSON array. Do not include any introductory or concluding text.
+
+FILES TO ANALYZE:
+{context_text}

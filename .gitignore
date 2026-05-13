@@ -1,0 +1,15 @@
+.env
+.venv
+__pycache__
+.pytest_cache
+.ruff_cache
+.mypy_cache
+.vscode
+.cursor
+.cursor/rules
+.cursor/rules/my-python-rule.mdc
+.cursor/rules/my-python-rule.mdc
+debug_output/
+data/
+pipeline_state/
+output/
