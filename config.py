@@ -21,6 +21,11 @@ IGNORE_DIRS = {
     "docker",
     "migrations",
     "config",
+    # Go-specific
+    "vendor",
+    "bin",
+    "testdata",
+    ".idea",
 }
 
 IGNORE_FILES = {
@@ -39,12 +44,22 @@ IGNORE_FILES = {
     ".env",
     ".env.local",
     ".env.example",
+    # Go-specific
+    "go.sum",
+    "go.work.sum",
 }
 
 IGNORE_PATTERNS = {
     "*.spec.js",
     "*.spec.ts",
     "*.css",
+    # Go-specific: tests and generated code
+    "*_test.go",
+    "*.pb.go",
+    "*_grpc.pb.go",
+    "*_mock.go",
+    "*.gen.go",
+    "*_gen.go",
 }
 
 ALLOWED_EXTENSIONS = {
@@ -62,6 +77,7 @@ ALLOWED_EXTENSIONS = {
 
     ".php",
     ".py",
+    ".go",
 }
 
 # Comma-separated absolute (or ~) paths to the codebases to index, set in .env:
@@ -73,10 +89,6 @@ PROJECT_ROOTS = [
 ]
 
 GEMINI_API_KEY = os.getenv("GEMINI_API_KEY")
-
-# Supabase (used by the API server to read project info and write status back)
-SUPABASE_URL = os.getenv("SUPABASE_URL", "")
-SUPABASE_SERVICE_ROLE_KEY = os.getenv("SUPABASE_SERVICE_ROLE_KEY", "")
 
 # API server
 API_HOST = os.getenv("API_HOST", "0.0.0.0")

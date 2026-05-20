@@ -2,6 +2,7 @@ import logging
 import os
 import re
 from datetime import datetime
+from functools import lru_cache
 from pathlib import Path
 from typing import Any, Dict, List, Optional
 
@@ -81,8 +82,12 @@ def _generate_text(prompt: str) -> str:
     raise RuntimeError("No available generative model")
 
 
+@lru_cache(maxsize=512)
 def translate_to_english(text: str) -> str:
-    """Translates user query to English for better semantic search."""
+    """Translates user query to English for better semantic search.
+
+    Cached: identical queries skip the Gemini round-trip.
+    """
     prompt = (
         "Translate the following text to English. "
         "Return ONLY the translation, no explanations.\n\n"

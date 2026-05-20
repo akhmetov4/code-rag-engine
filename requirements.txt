@@ -4,4 +4,3 @@ chromadb
 json-repair
 fastapi
 uvicorn[standard]
-supabase

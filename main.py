@@ -104,7 +104,7 @@ def _build_parser() -> argparse.ArgumentParser:
     sp_process = subparsers.add_parser(
         "process", help="Summary + Embedding (full pipeline).",
     )
-    _add_pipeline_args(sp_process)
+    _add_pipeline_args(sp_process, project_default=None)
     sp_process.add_argument(
         "--batch-limit", type=int, default=0,
         help="How many summary batches to process (0 = all).",
@@ -246,8 +246,12 @@ def _cmd_embed(args: argparse.Namespace) -> None:
     print(f"  Chroma DB path: {CHROMA_DB_PATH}")
 
 
-def _cmd_process(args: argparse.Namespace) -> None:
+def _process_one_project(args: argparse.Namespace) -> None:
     root_path, project_name = _resolve_project(args)
+    print(f"\n{'='*80}")
+    print(f"  PROCESSING: {project_name}  ({root_path})")
+    print(f"{'='*80}")
+
     project_data = prepare_project_data(root_path)
     all_batches = create_smart_batches(project_data)
     print_batch_preview(batches=all_batches, limit=args.batch_limit)
@@ -281,6 +285,41 @@ def _cmd_process(args: argparse.Namespace) -> None:
     print(f"  Embedded now: {embedding_stats.embedded_now}")
     print(f"  Upserted now: {embedding_stats.upserted_now}")
     print(f"  Chroma DB path: {CHROMA_DB_PATH}")
+
+
+def _cmd_process(args: argparse.Namespace) -> None:
+    if args.project_index is None:
+        if not PROJECT_ROOTS:
+            print("[process] PROJECT_ROOTS is empty. Set it in .env.")
+            return
+        indices = list(range(len(PROJECT_ROOTS)))
+        print(
+            f"[process] No --project-index given. "
+            f"Running for ALL {len(indices)} projects in PROJECT_ROOTS."
+        )
+    else:
+        indices = [args.project_index]
+
+    failures: list[tuple[int, str]] = []
+    for idx in indices:
+        args.project_index = idx
+        try:
+            _process_one_project(args)
+        except Exception as exc:
+            logger.exception("[process] failed for project index %d", idx)
+            print(f"[process] FAILED for project index {idx}: {exc}")
+            print("[process] Continuing with next project...")
+            failures.append((idx, str(exc)))
+
+    print(f"\n{'='*80}")
+    print(f"  PROCESS SUMMARY")
+    print(f"{'='*80}")
+    print(f"  Projects attempted: {len(indices)}")
+    print(f"  Succeeded: {len(indices) - len(failures)}")
+    if failures:
+        print(f"  Failed: {len(failures)}")
+        for idx, err in failures:
+            print(f"    - index {idx}: {err}")
 
 
 def _cmd_search(args: argparse.Namespace) -> None:

@@ -1,7 +1,9 @@
 import logging
 import os
+import threading
 from dataclasses import dataclass
-from typing import Any, Dict, List, Optional
+from functools import lru_cache
+from typing import Any, Dict, List, Optional, Tuple
 
 from google import genai
 
@@ -26,6 +28,10 @@ _rate_limiter = get_or_create_limiter(
     name="gemini-embed",
     max_requests=EMBEDDING_REQUESTS_PER_MINUTE,
 )
+
+# ChromaVectorStore is expensive to open (PersistentClient init). Reuse per project.
+_store_cache: Dict[str, ChromaVectorStore] = {}
+_store_cache_lock = threading.Lock()
 
 
 @dataclass
@@ -52,15 +58,25 @@ def _get_gemini_client() -> Any:
 
 
 def _get_store(project_name: str) -> ChromaVectorStore:
-    collection_name = f"{CHROMA_COLLECTION_PREFIX}_{project_name}"
-    return ChromaVectorStore(
-        db_path=CHROMA_DB_PATH,
-        collection_name=collection_name,
-    )
+    cached = _store_cache.get(project_name)
+    if cached is not None:
+        return cached
+    with _store_cache_lock:
+        cached = _store_cache.get(project_name)
+        if cached is not None:
+            return cached
+        collection_name = f"{CHROMA_COLLECTION_PREFIX}_{project_name}"
+        store = ChromaVectorStore(
+            db_path=CHROMA_DB_PATH,
+            collection_name=collection_name,
+        )
+        _store_cache[project_name] = store
+        return store
 
 
-def embed_query(query_text: str, model: str = EMBEDDING_MODEL) -> List[float]:
-    """Converts user query text into a vector through Gemini Embedding API."""
+@lru_cache(maxsize=512)
+def _embed_query_cached(query_text: str, model: str) -> Tuple[float, ...]:
+    """Cached embedding for repeat queries. Same text+model → same vector deterministically."""
     client = _get_gemini_client()
     _rate_limiter.wait_for_slot()
     response = client.models.embed_content(
@@ -73,7 +89,12 @@ def embed_query(query_text: str, model: str = EMBEDDING_MODEL) -> List[float]:
     values = getattr(embeddings[0], "values", None)
     if not isinstance(values, list):
         raise ValueError("Embedding response does not contain vector values")
-    return values
+    return tuple(values)
+
+
+def embed_query(query_text: str, model: str = EMBEDDING_MODEL) -> List[float]:
+    """Converts user query text into a vector through Gemini Embedding API."""
+    return list(_embed_query_cached(query_text, model))
 
 
 def search_codebase(
