@@ -1,8 +1,8 @@
 # Code RAG Engine
 
-Индексация кодовой базы через «технические паспорта» файлов (Gemini) и семантический поиск в ChromaDB. Точка входа — `main.py`.
+Indexes codebases via per-file "technical passports" (generated with Gemini) and runs semantic search over them in ChromaDB. Entry point: `main.py`.
 
-## Установка
+## Installation
 
 ```bash
 cd /path/to/code-rag-engine
@@ -11,111 +11,111 @@ source .venv/bin/activate   # Windows: .venv\Scripts\activate
 pip install -r requirements.txt
 ```
 
-В корне проекта создайте файл `.env`:
+Create a `.env` file in the project root:
 
 ```env
-GEMINI_API_KEY=ваш_ключ
-# Список путей к проектам, которые индексируются и по которым ищется код.
-# Разделитель — запятая. Индексы 0, 1, 2 … используются в флаге --project-index.
+GEMINI_API_KEY=your_key
+# Comma-separated list of project paths to index and search over.
+# Indices 0, 1, 2 … are used by the --project-index flag.
 PROJECT_ROOTS=/path/to/repo-a,/path/to/repo-b
 ```
 
-Векторная БД по умолчанию: `data/chroma/`. Промежуточные паспорта: каталог `pipeline_state/<имя_проекта>/passports/`.
+Default vector DB location: `data/chroma/`. Intermediate passports: `pipeline_state/<project_name>/passports/`.
 
 ---
 
-## Общая справка
+## General help
 
 ```bash
 python main.py --help
-python main.py <команда> --help
+python main.py <command> --help
 ```
 
 ---
 
-## Команды и примеры
+## Commands and examples
 
-### `summary` — генерация паспортов (саммари) по файлам
+### `summary` — generate per-file passports (summaries)
 
-Без записи на диск, только план батчей:
+Without writing anything to disk, just print the batch plan:
 
 ```bash
 python main.py summary --dry-run
 ```
 
-Полный прогон для первого проекта в `PROJECT_ROOTS` (индекс по умолчанию `0`):
+Full run for the first project in `PROJECT_ROOTS` (default index `0`):
 
 ```bash
 python main.py summary
 ```
 
-Ограничить число батчей и задать параллелизм:
+Limit the number of batches and set the worker count:
 
 ```bash
 python main.py summary --batch-limit 3 --workers 2
 ```
 
-Другой проект и свой каталог состояния:
+A different project and a custom state directory:
 
 ```bash
 python main.py summary --project-index 1 --state-dir my_state
 ```
 
-### `embed` — загрузка паспортов в ChromaDB
+### `embed` — load passports into ChromaDB
 
-Сначала должен существовать каталог паспортов (после `summary` или `process`). Пример:
+A passports directory must already exist (produced by `summary` or `process`). Example:
 
 ```bash
 python main.py embed
 python main.py embed --project-index 1 --chunk-size 120 --state-dir pipeline_state
 ```
 
-### `process` — полный конвейер: `summary` + `embed`
+### `process` — full pipeline: `summary` + `embed`
 
 ```bash
 python main.py process
 python main.py process --batch-limit 5 --workers 3 --chunk-size 120 --project-index 0
 ```
 
-### `search` — семантический поиск по уже проиндексированным коллекциям
+### `search` — semantic search over already-indexed collections
 
-По всем проектам из `PROJECT_ROOTS` (аргумент `--project-index` не указан):
+Across all projects in `PROJECT_ROOTS` (no `--project-index` argument):
 
 ```bash
-python main.py search "где обрабатывается оплата"
+python main.py search "where is payment processed"
 ```
 
-Только один проект:
+A single project only:
 
 ```bash
 python main.py search "authentication middleware" --project-index 0
 ```
 
-Больше кандидатов на первом шаге и без расширения по доменам:
+More candidates on the first step and no domain expansion:
 
 ```bash
 python main.py search "night delivery" --top-k 10 --no-expand
 ```
 
-### `ask` — поиск + сбор контекста + отчёт в файл (полный RAG)
+### `ask` — search + context assembly + report to file (full RAG)
 
-Нужны сохранённые паспорта (`summary` или `process`). По умолчанию учитываются все проекты; для одного укажите индекс.
+Requires saved passports (from `summary` or `process`). By default all projects are considered; pass an index to scope to one.
 
 ```bash
-python main.py ask "Как устроена ночная доставка?"
+python main.py ask "How does night delivery work?"
 python main.py ask "What happens on buy button click?" --project-index 0 --top-k 8
-python main.py ask "описание API заказов" --no-expand --output-dir reports
+python main.py ask "describe the orders API" --no-expand --output-dir reports
 ```
 
-Отчёт сохраняется в указанную папку (по умолчанию `output/`) в виде markdown-файла.
+The report is saved to the specified folder (default `output/`) as a markdown file.
 
 ---
 
-## Типичный порядок работы
+## Typical workflow
 
-1. Настроить `PROJECT_ROOTS` и `.env`.
-2. Один раз прогнать индексацию: `python main.py process` (или по шагам `summary`, затем `embed`).
-3. Искать: `python main.py search "..."`.
-4. Глубокий ответ с файлом: `python main.py ask "..."`.
+1. Configure `PROJECT_ROOTS` and `.env`.
+2. Run indexing once: `python main.py process` (or step by step with `summary`, then `embed`).
+3. Search: `python main.py search "..."`.
+4. Deep answer with a saved file: `python main.py ask "..."`.
 
-После изменения кода в целевом репозитории имеет смысл снова запустить `summary`/`process` для актуализации паспортов и эмбеддингов.
+After changing code in a target repo, re-run `summary`/`process` to refresh passports and embeddings.
